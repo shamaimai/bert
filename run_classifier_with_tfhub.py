@@ -58,9 +58,13 @@ def create_model(is_training, input_ids, input_mask, segment_ids, labels,
   #
   # If you want to use the token-level output, use
   # bert_outputs["sequence_output"] instead.
-  output_layer = bert_outputs["pooled_output"]
+  output_layer = bert_outputs["sequence_output"]
 
   hidden_size = output_layer.shape[-1].value
+ 
+  final_shape = tf.shape(tf.tile(output_layer[:,:,0:1], [-1, -1, num_labels]))
+
+  output_layer = tf.reshape(output_layer, [-1, hidden_size]) #[batch_size * seq_len, hidden_size]
 
   output_weights = tf.get_variable(
       "output_weights", [num_labels, hidden_size],
@@ -74,16 +78,18 @@ def create_model(is_training, input_ids, input_mask, segment_ids, labels,
       # I.e., 0.1 dropout
       output_layer = tf.nn.dropout(output_layer, keep_prob=0.9)
 
-    logits = tf.matmul(output_layer, output_weights, transpose_b=True)
-    logits = tf.nn.bias_add(logits, output_bias)
-    log_probs = tf.nn.log_softmax(logits, axis=-1)
+    output_layer = tf.matmul(output_layer, output_weights, transpose_b=True)
+    output_layer = tf.nn.bias_add(output_layer, output_bias)
+    output_layer = tf.reshape(output_layer, final_shape) #[batch_size, seq_len, num_labels]
+
+    log_probs = tf.nn.log_softmax(output_layer, axis=-1)
 
     one_hot_labels = tf.one_hot(labels, depth=num_labels, dtype=tf.float32)
 
     per_example_loss = -tf.reduce_sum(one_hot_labels * log_probs, axis=-1)
     loss = tf.reduce_mean(per_example_loss)
 
-    return (loss, per_example_loss, logits)
+    return (loss, per_example_loss, output_layer)
 
 
 def model_fn_builder(num_labels, learning_rate, num_train_steps,
@@ -104,7 +110,7 @@ def model_fn_builder(num_labels, learning_rate, num_train_steps,
 
     is_training = (mode == tf.estimator.ModeKeys.TRAIN)
 
-    (total_loss, per_example_loss, logits) = create_model(
+    (total_loss, per_example_loss, output_layer) = create_model(
         is_training, input_ids, input_mask, segment_ids, label_ids, num_labels)
 
     output_spec = None
