@@ -588,7 +588,15 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
   #
   # If you want to use the token-level output, use model.get_sequence_output()
   # instead.
-  output_layer = model.get_pooled_output()
+  output_layer = model.get_sequence_output()
+
+
+  final_shape = tf.shape(tf.tile(output_layer[:,:,0:1], [-1, -1, num_labels]))
+
+  output_layer = tf.reshape(output_layer, [batch_size * seq_len, hidden_size])
+  output_layer = tf.matmul(output_layer, output_weights, transpose_b=True)
+  output_layer = tf.nn.bias_add(output_layer, output_bias)
+  output_layer = tf.reshape(output_layer, final_shape)
 
   hidden_size = output_layer.shape[-1].value
 
@@ -615,7 +623,10 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
     loss = tf.reduce_mean(per_example_loss)
 
     return (loss, per_example_loss, logits, probabilities)
-
+    
+    #logits & possibility [batch_size, num_labels] -> [batch_size, seq_len, num_labels]
+    #total_loss [1]
+    #per_example_loss [batch_size]
 
 def model_fn_builder(bert_config, num_labels, init_checkpoint, learning_rate,
                      num_train_steps, num_warmup_steps, use_tpu,
