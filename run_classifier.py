@@ -588,17 +588,14 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
   #
   # If you want to use the token-level output, use model.get_sequence_output()
   # instead.
+
   output_layer = model.get_sequence_output()
 
+  hidden_size = output_layer.shape[-1].value
 
   final_shape = tf.shape(tf.tile(output_layer[:,:,0:1], [-1, -1, num_labels]))
 
-  output_layer = tf.reshape(output_layer, [batch_size * seq_len, hidden_size])
-  output_layer = tf.matmul(output_layer, output_weights, transpose_b=True)
-  output_layer = tf.nn.bias_add(output_layer, output_bias)
-  output_layer = tf.reshape(output_layer, final_shape)
-
-  hidden_size = output_layer.shape[-1].value
+  output_layer = tf.reshape(output_layer, [-1, hidden_size])
 
   output_weights = tf.get_variable(
       "output_weights", [num_labels, hidden_size],
@@ -607,6 +604,11 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
   output_bias = tf.get_variable(
       "output_bias", [num_labels], initializer=tf.zeros_initializer())
 
+
+  output_layer = tf.matmul(output_layer, output_weights, transpose_b=True)
+  output_layer = tf.nn.bias_add(output_layer, output_bias)
+  output_layer = tf.reshape(output_layer, final_shape)
+  
   with tf.variable_scope("loss"):
     if is_training:
       # I.e., 0.1 dropout
