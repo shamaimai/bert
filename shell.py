@@ -1,6 +1,7 @@
-export BERT_BASE_DIR=/path/to/bert/uncased_L-12_H-768_A-12
-export GLUE_DIR=/path/to/glue
-export TRAINED_CLASSIFIER=/path/to/fine/tuned/classifier
+export BERT_BASE_DIR=/Users⁩/MaiSha⁩/Documents⁩/chinese_L-12_H-768_A-12
+export GLUE_DIR=/⁨Users⁩/⁨MaiSha⁩/⁨Documents/download_glue_data.py⁩
+export TRAINED_CLASSIFIER=/Users⁩/MaiSha⁩/Documents⁩/output
+
 
 python run_classifier.py \
   --task_name=MRPC \
